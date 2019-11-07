@@ -1,0 +1,2 @@
+---
+- include_tasks: ./apply_msbroker_template.yml

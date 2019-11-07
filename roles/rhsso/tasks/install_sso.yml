@@ -1,0 +1,36 @@
+---
+- include_role:
+    name: namespace
+    tasks_from: create
+  vars:
+    name: "{{ sso_namespace }}"
+    display_name: "{{ sso_namespace_display_name | default('Red Hat Single Sign-On')}}"
+    monitor: true
+    is_service: true
+
+
+
+- name: "Create required objects"
+  shell: "oc create -f {{ item }} -n {{ sso_namespace }}"
+  with_items: "{{ rhsso_operator_resource_items }}"
+  register: rhsso_operator_resources_result
+  failed_when: rhsso_operator_resources_result.stderr != '' and 'AlreadyExists' not in rhsso_operator_resources_result.stderr
+
+- name: "Create keycloak resource template"
+  template:
+    src: "keycloak.json.j2"
+    dest: "/tmp/keycloak.json"
+
+- name: "Create keycloak resource"
+  shell: oc create -f /tmp/keycloak.json -n {{ sso_namespace }}
+  register: rhsso_keycloak
+  failed_when: rhsso_keycloak.stderr != '' and 'AlreadyExists' not in rhsso_keycloak.stderr
+
+- name: "Wait for keycloak to be ready"
+  shell: "oc get keycloak/rhsso -o jsonpath='{.status.phase}' -n {{ sso_namespace }}"
+  register: result
+  until: result.stdout == 'reconcile'
+  retries: 50
+  delay: 10
+  changed_when: False
+  when: rhsso_provision_immediately

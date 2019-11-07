@@ -1,0 +1,48 @@
+
+- name: Check console-config namespace exists
+  shell: oc get namespace {{ customise_web_console.namespace }}
+  register: console_config_check_namespace_exists
+  changed_when: false
+  failed_when: false
+
+- name: "Get route to hosted javascript file"
+  shell: oc get route {{ customise_web_console.route_name }} -n {{ customise_web_console.namespace }} --template '{{ "{{" }}printf "https://%s/%s" .spec.host "{{ customise_web_console.javascript_filename }}"{{ "}}" }}'
+  register: get_javascript_url
+  changed_when: false
+  failed_when: get_javascript_url.rc != 0 and 'not found' not in get_javascript_url.stderr
+  when: console_config_check_namespace_exists.rc == 0
+
+- name: "check for changes needed to web console config"
+  when:
+    - console_config_check_namespace_exists.rc == 0
+    - get_javascript_url.stdout != ""
+  block:
+    - name: "retrieve current openshift web console configmap"
+      shell: oc get configmap {{ customise_web_console.web_console.configmap }} -n {{ customise_web_console.web_console.namespace }} --template '{{ "{{" }} index .data "{{ customise_web_console.web_console.configmap_key -}}" {{ "}}" }}'
+      register: get_web_console_config
+      changed_when: false
+
+    - name: "write current openshift web console config to a temporary file"
+      copy: content={{ get_web_console_config.stdout }} dest=/tmp/{{ customise_web_console.web_console.configmap_key }}
+
+    - name: "determine changes needed to the web console configmap"
+      yedit:
+        src: /tmp/{{ customise_web_console.web_console.configmap_key }}
+        key: extensions.scriptURLs
+        update: true
+        value: "{{ get_javascript_url.stdout }}"
+        state: absent
+      register: new_web_console_config
+      when: get_web_console_config.stdout != ""
+
+    - name: "update {{ customise_web_console.web_console.namespace }}/{{ customise_web_console.web_console.configmap }} configmap"
+      shell: oc create configmap {{ customise_web_console.web_console.configmap }} --from-file=/tmp/{{ customise_web_console.web_console.configmap_key }} -n {{ customise_web_console.web_console.namespace }} --dry-run -o yaml | oc replace -f -
+      when: new_web_console_config is changed
+
+- include_role:
+    name: namespace
+    tasks_from: delete
+  vars:
+    names:
+    - "{{ customise_web_console.namespace }}"
+  when: console_config_check_namespace_exists.rc == 0

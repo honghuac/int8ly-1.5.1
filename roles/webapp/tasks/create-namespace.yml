@@ -1,0 +1,9 @@
+---
+- include_role:
+    name: namespace
+    tasks_from: create
+  vars:
+    name: "{{ webapp_namespace }}"
+    display_name: "Solution Explorer"
+    monitor: true
+    is_service: true

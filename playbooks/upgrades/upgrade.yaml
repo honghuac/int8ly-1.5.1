@@ -1,0 +1,50 @@
+---
+- hosts: master
+  gather_facts: no
+  tasks:
+    - include_role:
+        name: openshift
+        tasks_from: set_master_vars
+      when: run_master_tasks | default(true) | bool
+
+# Required for Ansible Tower installs that need to login via oc as a prerequisite
+- import_playbook: "../openshift.yml"
+
+- hosts: localhost
+  gather_facts: yes
+  tasks:
+    - include_role:
+        name: prerequisites
+        tasks_from: upgrade
+      vars:
+        from_versions:
+          - "release-1.5.0"
+
+- hosts: localhost
+  gather_facts: yes
+  tasks:
+    # Monitoring upgrade
+    - name: Expose monitoring vars
+      include_vars: "../../roles/middleware_monitoring_config/defaults/main.yml"
+
+    - name: Expose 3scale vars
+      include_vars: "../../roles/3scale/defaults/main.yml"
+
+    - name: Recreate any CRs for alerts to ensure we have the latest
+      include_role:
+        name: middleware_monitoring_config
+        tasks_from: upgrade.yml
+      vars:
+        mdc: false
+        mobile_security_service: false
+        ups: false
+
+    - name: Uninstall nexus
+      include_role:
+        name: nexus
+        tasks_from: uninstall.yml
+      when: cluster_type == "poc" or cluster_type == "osd"
+
+#Update product version (should always be last)
+- import_playbook: "../generate-customisation-inventory.yml"
+- import_playbook: "../mobile_generate_manifest.yml"

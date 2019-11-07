@@ -1,0 +1,20 @@
+apiVersion: "integreatly.org/v1alpha1"
+kind: "WebApp"
+metadata:
+  name: "tutorial-web-app-operator"
+  labels:
+    app: "{{ webapp_app_label }}"
+spec:
+  app_label: "{{ webapp_app_label }}"
+  template:
+    path: "{{ webapp_operator_template_path }}"
+    parameters:
+      OPENSHIFT_OAUTHCLIENT_ID: "{{ webapp_client_id }}"
+      OPENSHIFT_HOST: "{{ openshift_host.stdout }}"
+      OPENSHIFT_OAUTH_HOST: "{{ openshift_oauth_host.stdout }}"
+      SSO_ROUTE: "{{ sso_route.stdout }}"
+      INTEGREATLY_VERSION: "{{ integreatly_version }}"
+      CLUSTER_TYPE: "{{ cluster_type }}"
+{% if webapp_walkthrough_locations is defined  %}
+      WALKTHROUGH_LOCATIONS: "{{ webapp_walkthrough_locations|join(',') }}"
+{% endif %}

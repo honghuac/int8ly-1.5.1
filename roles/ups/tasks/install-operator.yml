@@ -1,0 +1,68 @@
+---
+
+- include_role:
+    name: namespace
+    tasks_from: create
+  vars:
+    name: "{{ ups_namespace }}"
+    display_name: "Mobile UnifiedPush Server"
+    monitor: true
+    is_service: true
+
+- name: Install ups resources
+  shell: "oc apply -f {{ item }} -n {{ ups_namespace }}"
+  with_items: "{{ ups_resources }}"
+
+- name: Copy role binding template
+  template:
+    src: role_binding.yml.j2
+    dest: "{{ ups_template_dir }}/role-binding.yml"
+
+- name: Create role binding
+  shell: "oc apply -f {{ ups_template_dir }}/role-binding.yml -n {{ ups_namespace }}"
+
+- name: Delete role binding temporary file
+  file:
+    path: "{{ ups_template_dir }}/role-binding.yml"
+    state: absent
+
+- name: Wait for operator ServiceAccount to have access to AddressSpace resource from enmasse
+  shell: "oc auth can-i create addressspace -n {{ ups_namespace }} --as system:serviceaccount:{{ ups_namespace }}:unifiedpush-operator"
+  register: result
+  until: result.rc == 0
+  retries: 50
+  delay: 10
+
+- name: Wait for operator ServiceAccount to have access to Address resource from enmasse
+  shell: "oc auth can-i create address -n {{ ups_namespace }} --as system:serviceaccount:{{ ups_namespace }}:unifiedpush-operator"
+  register: result
+  until: result.rc == 0
+  retries: 50
+  delay: 10
+
+- name: Wait for operator ServiceAccount to have access to MessagingUser resource from enmasse
+  shell: "oc auth can-i create messaginguser -n {{ ups_namespace }} --as system:serviceaccount:{{ ups_namespace }}:unifiedpush-operator"
+  register: result
+  until: result.rc == 0
+  retries: 50
+  delay: 10
+
+- name: Process operator template
+  template:
+    src: operator.yml.j2
+    dest: "{{ ups_template_dir }}/ups-operator.yml"
+
+- name: Provision ups operator
+  shell: "oc apply -f {{ ups_template_dir }}/ups-operator.yml -n {{ ups_namespace }}"
+
+- name: Get deployment desired replicas
+  shell: "oc get deployment/unifiedpush-operator -o jsonpath='{.spec.replicas}' -n {{ ups_namespace }}"
+  register: ups_operator_replicas_cmd
+
+- name: Wait for operator readiness
+  shell: "oc get deployment/unifiedpush-operator -o jsonpath='{.status.availableReplicas}' -n {{ ups_namespace }}"
+  register: result
+  until: result.stdout == ups_operator_replicas_cmd.stdout
+  retries: 50
+  delay: 10
+  changed_when: False

@@ -1,0 +1,42 @@
+---
+monitoring_namespace: "{{ns_prefix | default('')}}middleware-monitoring"
+namespace_postfix: ""
+monitoring_display_name: "Managed Service Monitoring"
+monitoring_tmp_dir: /tmp
+monitoring_prometheus_retention: 45d
+monitoring_prometheus_storage_request: 10Gi
+
+# Resources to create via the oc tool.
+monitoring_resources:
+- "{{ middleware_monitoring_operator_resources }}/crds/BlackboxTarget.yaml"
+- "{{ middleware_monitoring_operator_resources }}/crds/ApplicationMonitoring.yaml"
+- "{{ middleware_monitoring_operator_resources }}/operator_roles/service_account.yaml"
+- "{{ middleware_monitoring_operator_resources }}/operator_roles/role.yaml"
+- "{{ middleware_monitoring_operator_resources }}/operator_roles/role_binding.yaml"
+- "{{ middleware_monitoring_operator_resources }}/operator.yaml"
+
+monitoring_resource_templates_pre:
+# Grafana resources
+- "grafana_crd.yml"
+- "grafana_dashboard_crd.yml"
+- "grafana_datasource_crd.yml"
+- "grafana_cluster_role.yml"
+- "grafana_cluster_role_binding.yml"
+- "grafana-proxy-clusterrole.yml"
+- "grafana-proxy-clusterrole_binding.yml"
+  # Prometheus resources
+- "prometheus_crd.yml"
+- "prometheus_alert_manager_crd.yml"
+- "prometheus_service_monitor_crd.yml"
+- "prometheus_rule_crd.yml"
+- "prometheus_cluster_role_binding.yml"
+- "prometheus_cluster_role.yml"
+- "prometheus_operator_cluster_role_binding.yml"
+- "prometheus_operator_cluster_role.yml"
+- "alert_manager_cluster_role_binding.yml"
+- "alert_manager_cluster_role.yml"
+
+
+monitoring_resource_templates_post:
+  # Application monitoring resources
+  - "application_monitoring_cr.yml"

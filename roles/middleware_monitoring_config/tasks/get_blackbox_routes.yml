@@ -1,0 +1,74 @@
+---
+- name: get solution explorer routes for blackbox targets
+  block:
+  - name: get solution explorer route
+    shell: oc get route tutorial-web-app -o template --template \{\{.spec.host\}\} -n {{ eval_webapp_namespace }}
+    register: webapp_tutorial_web_app_route
+  when: webapp | default(true) | bool
+
+- name: get launcher routes for blackbox targets
+  block:
+  - name: get launcher route
+    shell: oc get route launcher -o template --template \{\{.spec.host\}\} -n {{ eval_launcher_namespace }}
+    register: launcher_launcher_route
+  - name: get launcher sso route
+    shell: oc get route launcher-sso -o template --template \{\{.spec.host\}\} -n {{ eval_launcher_namespace }}
+    register: launcher_launcher_sso_route
+  when: launcher | default(true) | bool
+
+- name: Get enmasse routes for blackbox targets
+  block:
+  - name: get enmasse keycloak route
+    shell: oc get route keycloak -o template --template \{\{.spec.host\}\} -n {{ eval_enmasse_namespace }}
+    register: enmasse_keycloak_route
+  - name: get enmasse keycloak route
+    shell: oc get route console-proxy -o template --template \{\{.spec.host\}\} -n {{ eval_enmasse_namespace }}
+    register: enmasse_console_proxy_route
+  when: enmasse | default(true) | bool
+
+- name: Get codeready routes for blackbox targets
+  block:
+  - name: get codeready route
+    shell: oc get route codeready -o template --template \{\{.spec.host\}\} -n {{ eval_che_namespace }}
+    register: codeready_codeready_route
+  when: che | default(true) | bool
+
+- name: Get rhsso routes for blackbox targets
+  block:
+  - name: get rhsso route
+    shell: oc get route sso -o template --template \{\{.spec.host\}\} -n {{ eval_rhsso_namespace }}
+    register: rhsso_rhsso_route
+
+- name: Get 3scale routes for blackbox targets
+  block:
+  - name: get 3scale system-provider route
+    shell: oc get routes -l zync.3scale.net/route-to={{ threescale_route_system_provider }} -o jsonpath='{.items[*].spec.host}' -n {{ threescale_namespace }}
+    register: threescale_system_provider_admin_route
+  - name: get 3scale system-master route
+    shell: oc get routes -l zync.3scale.net/route-to={{ threescale_route_system_master }} -o jsonpath='{.items[*].spec.host}' -n {{ threescale_namespace }}
+    register: threescale_system_master_route
+  - name: get 3scale system-developer route
+    shell: oc get routes -l zync.3scale.net/route-to={{ threescale_route_system_developer }} -o jsonpath='{.items[*].spec.host}' -n {{ threescale_namespace }}
+    register: threescale_system_developer_route
+  when: threescale | default(true) | bool
+
+- name: Get Mobile Developer Console routes for blackbox targets
+  block:
+  - name: get mdc route
+    shell: oc get route mdc-mdc-proxy -o template --template \{\{.spec.host\}\} -n {{ eval_mdc_namespace }}
+    register: mdc_mdc_route
+  when: mdc | default(true) | bool
+
+- name: Get UnifiedPushServer routes for blackbox targets
+  block:
+  - name: get ups route
+    shell: oc get route unifiedpush-unifiedpush-proxy -o template --template \{\{.spec.host\}\} -n {{ eval_ups_namespace }}
+    register: ups_ups_route
+  when: ups | default(true) | bool
+
+- name: Get Mobile Security Service routes for blackbox targets
+  block:
+  - name: get mss route
+    shell: oc get route route -o template --template \{\{.spec.host\}\} -n {{ eval_mobile_security_service_namespace }}
+    register: mss_mss_route
+  when: mobile_security_service | default(true) | bool

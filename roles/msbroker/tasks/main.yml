@@ -1,0 +1,12 @@
+---
+# Create managed-service-broker namespace
+- include_role:
+    name: namespace
+    tasks_from: create
+  vars:
+    name: "{{ msbroker_namespace }}"
+    display_name: "Managed Service Broker"
+    monitor: true
+    is_service: true
+
+- include_tasks: ./apply_msbroker_template.yml

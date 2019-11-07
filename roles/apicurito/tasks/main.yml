@@ -1,0 +1,20 @@
+---
+- name: Create {{ apicurito_namespace }} namespace
+  include_role:
+    name: namespace
+    tasks_from: create
+  vars:
+    name: "{{ apicurito_namespace }}"
+    display_name: "{{ apicurito_display_name }}"
+    monitor: true
+    is_service: true
+
+- name: Download template from cluster
+  shell: "oc get template {{ apicurito_template }} -n {{ apicurito_template_namespace }} -o {{ apicurito_template_file_format }} > {{ apicurito_template_file }}"
+
+- name: Install apicurito
+  shell: "oc process \
+  -f {{ apicurito_template_file }} \
+  --param=ROUTE_HOSTNAME={{ apicurito_route_hostname }}.{{ apicurito_route_suffix }} | oc create -f - -n {{ apicurito_namespace }}"
+  register: create_apicurito_cmd
+  failed_when: create_apicurito_cmd.stderr != '' and 'AlreadyExists' not in create_apicurito_cmd.stderr
